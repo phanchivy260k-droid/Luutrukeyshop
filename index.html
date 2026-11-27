@@ -1,0 +1,2438 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault200 - Kho Lưu Trữ & Lấy Key Không Trùng Lặp (200 Năm)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        if (window.tailwind) {
+            tailwind.config = {
+                darkMode: 'class',
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+                        },
+                        colors: {
+                            cyber: {
+                                bg: '#060a13',
+                                card: '#0f172a',
+                                panel: '#111c33',
+                                border: '#1e293b',
+                                accent: '#06b6d4',
+                                purple: '#8b5cf6',
+                                emerald: '#10b981',
+                                amber: '#f59e0b',
+                                rose: '#f43f5e'
+                            }
+                        }
+                    }
+                }
+            };
+        }
+    </script>
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+        body {
+            background-color: #060a13;
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-image:
+                radial-gradient(at 10% 0%, rgba(6, 182, 212, 0.14) 0px, transparent 48%),
+                radial-gradient(at 90% 0%, rgba(139, 92, 246, 0.14) 0px, transparent 48%),
+                radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.06) 0px, transparent 55%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.86);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.65);
+        }
+        .cyber-glow {
+            box-shadow: 0 0 35px -8px rgba(6, 182, 212, 0.28);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b1222;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #06b6d4;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-3 sm:px-0"></div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+        <div class="glass-panel rounded-2xl max-w-md w-full p-6 border border-slate-700 shadow-2xl space-y-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-lg">
+                    !
+                </div>
+                <h3 id="confirm-title" class="text-lg font-bold text-white">Xác nhận thao tác</h3>
+            </div>
+            <p id="confirm-message" class="text-sm text-slate-300 leading-relaxed"></p>
+            <div class="flex justify-end gap-3">
+                <button type="button" id="confirm-cancel-btn" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-semibold transition">
+                    Hủy bỏ
+                </button>
+                <button type="button" id="confirm-ok-btn" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs sm:text-sm font-bold shadow-lg transition">
+                    Đồng ý
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile & 200-Year Renewal Modal -->
+    <div id="profile-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
+        <div class="glass-panel rounded-2xl max-w-md w-full p-6 border border-slate-700 shadow-2xl space-y-4 my-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-white">Hồ Sơ & Thời Hạn 200 Năm</h3>
+                <button type="button" onclick="closeProfileModal()" class="text-slate-400 hover:text-white px-2 py-1 rounded-lg">✕</button>
+            </div>
+            <div id="profile-modal-content" class="text-xs sm:text-sm space-y-2"></div>
+            <div class="flex flex-wrap justify-end gap-2 pt-2">
+                <button type="button" id="profile-change-cred-btn" onclick="closeProfileModal(); openChangeCredModal();" class="hidden px-3.5 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold transition">
+                    Đổi TK / MK
+                </button>
+                <button type="button" onclick="renewCurrentUser200Years()" class="px-3.5 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition">
+                    +200 Năm (73.000 ngày)
+                </button>
+                <button type="button" onclick="closeProfileModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Self-Service Change Credentials Modal (Admin & Staff) -->
+    <div id="change-cred-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+        <div class="glass-panel rounded-2xl max-w-lg w-full p-6 border border-cyan-500/30 shadow-2xl space-y-4 my-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-white">Đổi Tài Khoản & Mật Khẩu Cá Nhân</h3>
+                    <p id="change-cred-subtitle" class="text-xs text-slate-400 mt-0.5">Yêu cầu mật khẩu mạnh, không trùng/chứa tên tài khoản</p>
+                </div>
+                <button type="button" onclick="closeChangeCredModal()" class="text-slate-400 hover:text-white px-2 py-1 rounded-lg">✕</button>
+            </div>
+
+            <form id="change-cred-form" onsubmit="handleSelfCredentialChange(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Mật khẩu hiện tại</label>
+                    <input type="password" id="cred-current-password" required placeholder="Nhập mật khẩu hiện tại..."
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-cyan-500 text-sm text-white outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Tên tài khoản (TK) mới</label>
+                    <input type="text" id="cred-new-username" required minlength="3" oninput="evaluateCredChangeStrength()" placeholder="Tên tài khoản mới (không trùng hệ thống)"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-cyan-500 text-sm text-white outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Mật khẩu (MK) mới</label>
+                    <input type="password" id="cred-new-password" required oninput="evaluateCredChangeStrength()" placeholder="VD: MatKhau@2026!"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-cyan-500 text-sm text-white outline-none">
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-slate-900/95 border border-slate-800 space-y-2 text-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 font-medium">Độ mạnh mật khẩu mới:</span>
+                        <span id="cred-strength-label" class="font-bold text-slate-400">Chưa nhập</span>
+                    </div>
+                    <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        <div id="cred-strength-bar" class="h-full w-0 bg-rose-500 transition-all duration-300"></div>
+                    </div>
+                    <ul id="cred-strength-list" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 text-[11px]"></ul>
+                </div>
+
+                <div class="flex justify-end gap-2.5 pt-2">
+                    <button type="button" onclick="closeChangeCredModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+                        Hủy
+                    </button>
+                    <button type="submit" id="btn-save-cred-change" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold shadow-lg transition">
+                        Lưu Thay Đổi TK/MK
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- AUTHENTICATION SCREEN (LOGIN & REGISTER)   -->
+    <!-- ========================================== -->
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="glass-panel cyber-glow rounded-3xl max-w-lg w-full p-6 sm:p-8 border border-slate-700/80 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-emerald-500"></div>
+
+            <!-- Brand Header -->
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 mb-3 text-cyan-400 font-extrabold text-xl">
+                    V200
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent">
+                    VAULT 200
+                </h1>
+                <p class="text-slate-400 text-xs sm:text-sm mt-1">
+                    Thêm & Lấy Key Không Trùng • Kho TK/MK • Lưu Trữ 200 Năm
+                </p>
+            </div>
+
+            <!-- Mode Switcher Tabs -->
+            <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950/90 rounded-2xl border border-slate-800 mb-6">
+                <button type="button" id="auth-tab-login" onclick="switchAuthMode('login')" class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 transition">
+                    Đăng Nhập
+                </button>
+                <button type="button" id="auth-tab-register" onclick="switchAuthMode('register')" class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold text-slate-400 hover:text-white border border-transparent transition">
+                    Đăng Ký Tài Khoản
+                </button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Tên tài khoản</label>
+                    <input type="text" id="login-username" required autocomplete="username" placeholder="Nhập tên tài khoản..."
+                        class="w-full px-4 py-3 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-sm text-white outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Mật khẩu</label>
+                    <input type="password" id="login-password" required autocomplete="current-password" placeholder="Nhập mật khẩu..."
+                        class="w-full px-4 py-3 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-sm text-white outline-none transition">
+                </div>
+                <button type="submit" id="btn-login" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/25 transition">
+                    Đăng Nhập Hệ Thống
+                </button>
+            </form>
+
+            <!-- Register Form (Clean username + strong password, no role dropdown) -->
+            <form id="register-form" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Tên tài khoản (TK - Không trùng lặp)</label>
+                    <input type="text" id="reg-username" required minlength="3" autocomplete="username" oninput="evaluateRegisterStrength()" placeholder="VD: thanhvien_01"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm text-white outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Mật khẩu mạnh (MK - Không trùng / chứa tên TK)</label>
+                    <input type="password" id="reg-password" required autocomplete="new-password" oninput="evaluateRegisterStrength()" placeholder="VD: VaultSecure@2026#9"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm text-white outline-none transition">
+                </div>
+
+                <!-- Password Strength Indicator -->
+                <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2 text-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 font-medium">Độ mạnh mật khẩu:</span>
+                        <span id="reg-strength-label" class="font-bold text-slate-400">Chưa nhập</span>
+                    </div>
+                    <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        <div id="reg-strength-bar" class="h-full w-0 bg-rose-500 transition-all duration-300"></div>
+                    </div>
+                    <ul id="reg-strength-list" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 text-[11px]"></ul>
+                </div>
+
+                <div class="p-3 rounded-xl bg-purple-500/10 border border-purple-500/25 text-xs text-purple-200">
+                    Tài khoản đăng ký mới được cấp thời hạn lưu trữ <strong>200 năm (73.000 ngày)</strong> và tự động đăng nhập ngay sau khi tạo.
+                </div>
+
+                <button type="submit" id="btn-register" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-purple-500/25 transition">
+                    Đăng Ký & Kích Hoạt 200 Năm
+                </button>
+            </form>
+
+            <!-- Storage Engine Status Bar -->
+            <div class="mt-6 pt-4 border-t border-slate-800/90 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                <span class="flex items-center gap-2">
+                    <span id="storage-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    <span id="storage-status-text">Đang khởi tạo kho lưu trữ bền vững...</span>
+                </span>
+                <span class="font-mono text-[11px] text-cyan-400">TTL: 200 NĂM</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MAIN APPLICATION DASHBOARD               -->
+    <!-- ========================================== -->
+    <div id="main-app" class="hidden min-h-screen flex flex-col">
+        <!-- Top Header -->
+        <header class="sticky top-0 z-30 glass-panel border-b border-slate-800/90">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2.5 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-extrabold text-white text-xs shadow-lg">
+                        V200
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-base sm:text-lg text-white">VAULT<span class="text-cyan-400">200</span></span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                0 TRÙNG • 200 NĂM
+                            </span>
+                        </div>
+                        <p id="header-storage-badge" class="text-[11px] text-slate-400">Cloudflare-Ready Resilient Vault • 73.000 Ngày</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="hidden md:flex flex-col items-end mr-1">
+                        <div class="flex items-center gap-1.5">
+                            <span id="nav-username" class="text-sm font-bold text-white">User</span>
+                            <span id="nav-role-badge" class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">USER</span>
+                        </div>
+                        <span id="nav-expiry-text" class="text-[11px] font-mono text-emerald-400">Hạn: 200 năm (73.000 ngày)</span>
+                    </div>
+
+                    <button type="button" id="btn-header-change-cred" onclick="openChangeCredModal()" class="hidden px-3 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition">
+                        Đổi TK/MK
+                    </button>
+
+                    <button type="button" onclick="openProfileModal()" class="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition">
+                        Hồ sơ
+                    </button>
+
+                    <button type="button" onclick="handleLogout()" class="px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition">
+                        Đăng xuất
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            <!-- Summary Metrics -->
+            <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Key Khả Dụng (Chưa Lấy)</p>
+                    <p id="metric-avail-keys" class="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono mt-2">0</p>
+                    <p class="text-[11px] text-cyan-400 mt-1">Sẵn sàng cấp phát • 200 năm</p>
+                </div>
+                <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Key Đã Lấy Ra (Không Trùng)</p>
+                    <p id="metric-dispensed-keys" class="text-2xl sm:text-3xl font-extrabold text-amber-400 font-mono mt-2">0</p>
+                    <p id="metric-total-keys-sub" class="text-[11px] text-slate-400 mt-1">Tổng 0 key từng nạp</p>
+                </div>
+                <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Kho TK / MK</p>
+                    <p id="metric-total-accounts" class="text-2xl sm:text-3xl font-extrabold text-purple-400 font-mono mt-2">0</p>
+                    <p class="text-[11px] text-purple-300 mt-1">Không trùng tên • Lưu 200 năm</p>
+                </div>
+                <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tài Khoản Hệ Thống</p>
+                    <p id="metric-total-users" class="text-2xl sm:text-3xl font-extrabold text-cyan-400 font-mono mt-2">0</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Admin riêng + Staff + User</p>
+                </div>
+            </section>
+
+            <!-- Navigation Tabs & Scope Toggle -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="tab-keys" onclick="switchWorkspaceTab('keys')" class="px-4 py-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs sm:text-sm font-bold transition">
+                        Thêm & Lấy Key (200 Năm)
+                    </button>
+                    <button type="button" id="tab-accounts" onclick="switchWorkspaceTab('accounts')" class="px-4 py-2.5 rounded-xl bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800 text-xs sm:text-sm font-semibold transition">
+                        Kho TK / MK (200 Năm)
+                    </button>
+                    <button type="button" id="tab-members" onclick="switchWorkspaceTab('members')" class="px-4 py-2.5 rounded-xl bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800 text-xs sm:text-sm font-semibold transition">
+                        Nhân Sự & Thành Viên
+                    </button>
+                    <button type="button" id="tab-admin-accounts" onclick="switchWorkspaceTab('admin-accounts')" class="hidden px-4 py-2.5 rounded-xl bg-slate-900/90 text-amber-300/80 hover:text-amber-200 border border-amber-500/30 text-xs sm:text-sm font-semibold transition">
+                        Kho Tài Khoản Admin
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-1 p-1 rounded-xl bg-slate-950/90 border border-slate-800 self-start sm:self-auto">
+                    <button type="button" id="filter-scope-all" onclick="changeDataScope('all')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-white transition">
+                        Tất cả
+                    </button>
+                    <button type="button" id="filter-scope-mine" onclick="changeDataScope('mine')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+                        Của tôi
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========================================================== -->
+            <!-- WORKSPACE 1: ADD KEYS & DISPENSE UNIQUE KEYS (200 YEARS)   -->
+            <!-- ========================================================== -->
+            <section id="workspace-keys" class="space-y-6">
+                <!-- Top 2-Column Action Area: Left = Thêm Key, Right = Lấy Key Ra Không Trùng -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- LEFT: THÊM KEY KHÔNG TRÙNG (200 NĂM) -->
+                    <div class="lg:col-span-6 glass-panel rounded-2xl p-5 border border-cyan-500/30 space-y-4">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 text-[11px] font-bold">BƯỚC 1</span>
+                                    <h2 class="text-base sm:text-lg font-bold text-white">Thêm Key Vào Kho (Không Trùng)</h2>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">Chống trùng 100% với cả key đang có lẫn key đã lấy trước đây • Lưu 200 năm</p>
+                            </div>
+                        </div>
+
+                        <form onsubmit="handleAddKeysBatch(event)" class="space-y-3.5">
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="text-xs font-semibold text-slate-300">Nhập / Dán Danh Sách Key (1 key / dòng)</label>
+                                    <button type="button" onclick="insertSampleKeys()" class="text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold underline">
+                                        + Tạo 5 Key mẫu
+                                    </button>
+                                </div>
+                                <textarea id="keys-batch-input" rows="5" required placeholder="V200-AAAA-1111-XXXX&#10;V200-BBBB-2222-YYYY&#10;V200-CCCC-3333-ZZZZ"
+                                    class="w-full p-3 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-cyan-500 text-xs sm:text-sm font-mono text-cyan-100 outline-none"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1">Gói / Phân loại Key</label>
+                                    <input type="text" id="keys-plan-input" value="Gói Vĩnh Viễn 200 Năm"
+                                        class="w-full px-3 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-cyan-500 text-xs text-white outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1">Ghi chú</label>
+                                    <input type="text" id="keys-note-input" placeholder="VD: VIP Server, Tool..."
+                                        class="w-full px-3 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-cyan-500 text-xs text-white outline-none">
+                                </div>
+                            </div>
+
+                            <button type="submit" id="btn-add-keys" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/20 transition">
+                                Kiểm Tra Trùng & Nạp Vào Kho (200 Năm)
+                            </button>
+                        </form>
+
+                        <div id="keys-import-summary" class="hidden p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1"></div>
+                    </div>
+
+                    <!-- RIGHT: LẤY KEY RA KHÔNG TRÙNG (DISPENSE UNIQUE KEYS) -->
+                    <div class="lg:col-span-6 glass-panel rounded-2xl p-5 border border-emerald-500/35 space-y-4">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[11px] font-bold">BƯỚC 2</span>
+                                    <h2 class="text-base sm:text-lg font-bold text-white">Lấy Key Ra Không Trùng</h2>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">Mỗi Key chỉ được cấp phát duy nhất 1 lần • Không bao giờ lặp lại</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs font-mono font-bold text-emerald-300 shrink-0">
+                                Còn: <span id="dispense-avail-badge">0</span>
+                            </span>
+                        </div>
+
+                        <div class="space-y-3.5">
+                            <!-- Quantity & Quick Preset Buttons -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="text-xs font-semibold text-slate-300">Số lượng Key muốn lấy ra</label>
+                                    <div class="flex items-center gap-1.5">
+                                        <button type="button" onclick="dispenseUniqueKeys(1)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold transition">
+                                            Lấy 1 Key
+                                        </button>
+                                        <button type="button" onclick="dispenseUniqueKeys(5)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold transition">
+                                            Lấy 5 Key
+                                        </button>
+                                        <button type="button" onclick="dispenseUniqueKeys(10)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold transition">
+                                            Lấy 10 Key
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <input type="number" id="dispense-qty-input" min="1" max="5000" value="1"
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-emerald-500 text-sm font-mono font-bold text-emerald-300 outline-none">
+                                    <input type="text" id="dispense-filter-plan" placeholder="Lọc theo gói (để trống = tất cả)"
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-emerald-500 text-xs text-white outline-none">
+                                </div>
+                            </div>
+
+                            <!-- Dispense Mode Toggle -->
+                            <div class="p-3 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2">
+                                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Chế độ xử lý sau khi lấy key:</p>
+                                <label class="flex items-start gap-2.5 cursor-pointer text-xs text-slate-200">
+                                    <input type="radio" name="dispense-mode" value="move_history" checked class="mt-0.5 accent-emerald-500">
+                                    <span><strong>Rút khỏi kho khả dụng & chuyển sang Lịch sử đã lấy</strong> (Khuyên dùng - chống cấp trùng 100%)</span>
+                                </label>
+                                <label class="flex items-start gap-2.5 cursor-pointer text-xs text-slate-300">
+                                    <input type="radio" name="dispense-mode" value="mark_exported" class="mt-0.5 accent-cyan-500">
+                                    <span><strong>Đánh dấu đã xuất & giữ lại danh sách</strong> (Vẫn khóa vĩnh viễn không cấp lần 2)</span>
+                                </label>
+                            </div>
+
+                            <button type="button" onclick="handleCustomDispense()" class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 transition">
+                                Lấy Key Ra Ngay (Không Trùng Lặp)
+                            </button>
+
+                            <!-- Instant Output Box for Newly Dispensed Keys -->
+                            <div class="space-y-2 pt-1">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <span class="text-xs font-semibold text-emerald-300">Kết quả Key vừa lấy ra (<span id="last-dispensed-count">0</span> key):</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <button type="button" onclick="copyLastDispensedKeys()" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold transition">
+                                            Sao Chép Tất Cả
+                                        </button>
+                                        <button type="button" onclick="downloadLastDispensedTxt()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 text-xs font-semibold transition">
+                                            Tải .TXT
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea id="dispensed-output-box" rows="3" readonly placeholder="Các mã Key vừa rút ra sẽ hiển thị tại đây để sao chép nhanh..."
+                                    class="w-full p-3 rounded-xl bg-slate-950 border border-emerald-500/30 text-xs sm:text-sm font-mono text-emerald-200 outline-none select-all"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Searchable Table: Available Keys vs Dispensed History -->
+                <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <!-- Sub-view Switcher -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" id="keys-subtab-available" onclick="switchKeysSubView('available')" class="px-3.5 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition">
+                                Key Khả Dụng (<span id="count-tab-avail">0</span>)
+                            </button>
+                            <button type="button" id="keys-subtab-dispensed" onclick="switchKeysSubView('dispensed')" class="px-3.5 py-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold transition">
+                                Lịch Sử Key Đã Lấy Ra (<span id="count-tab-dispensed">0</span>)
+                            </button>
+                            <button type="button" id="keys-subtab-all" onclick="switchKeysSubView('all')" class="px-3.5 py-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold transition">
+                                Tất Cả Key (<span id="count-tab-all">0</span>)
+                            </button>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="text" id="search-keys-input" oninput="renderKeysList()" placeholder="Tìm kiếm Key, gói, người thêm/lấy..."
+                                class="px-3.5 py-2 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-cyan-500 text-xs sm:text-sm text-white outline-none">
+                            <button type="button" onclick="exportFilteredKeysTxt()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-semibold transition shrink-0">
+                                Xuất Danh Sách .TXT
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-800">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-900/95 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
+                                    <th class="py-3 px-4">Mã Key</th>
+                                    <th class="py-3 px-3">Gói & Ghi chú</th>
+                                    <th class="py-3 px-3">Thời Hạn 200 Năm</th>
+                                    <th class="py-3 px-3">Trạng Thái & Lịch Sử Lấy</th>
+                                    <th class="py-3 px-4 text-right">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keys-table-body" class="divide-y divide-slate-800/70 text-xs sm:text-sm"></tbody>
+                        </table>
+                    </div>
+                    <div id="keys-empty" class="hidden py-10 text-center text-xs sm:text-sm text-slate-400">
+                        Chưa có Key nào trong mục này.
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- WORKSPACE 2: DUPLICATE-FREE TK/MK VAULT    -->
+            <!-- ========================================== -->
+            <section id="workspace-accounts" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-4">
+                    <div class="glass-panel rounded-2xl p-5 border border-slate-800 space-y-4">
+                        <div>
+                            <h2 class="text-base font-bold text-white">Lưu Tài Khoản & Mật Khẩu</h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Chống trùng tên tài khoản • Bảo lưu 200 năm (73.000 ngày)</p>
+                        </div>
+
+                        <form onsubmit="handleAddAccountsBatch(event)" class="space-y-4">
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="text-xs font-semibold text-slate-300">Danh sách (<code class="text-purple-400">taikhoan|matkhau</code>)</label>
+                                    <button type="button" onclick="insertSampleAccounts()" class="text-[11px] text-purple-400 hover:text-purple-300 underline">
+                                        + Tạo mẫu
+                                    </button>
+                                </div>
+                                <textarea id="accounts-batch-input" rows="6" required placeholder="user_01|MatKhauManh@2026&#10;user_02|PassSecure#9988"
+                                    class="w-full p-3 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-purple-500 text-xs sm:text-sm font-mono text-purple-100 outline-none"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 mb-1">Dịch vụ / Nền tảng / Ghi chú</label>
+                                <input type="text" id="accounts-service-input" placeholder="VD: Dịch vụ VIP, Hệ thống..."
+                                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-purple-500 text-xs text-white outline-none">
+                            </div>
+
+                            <button type="submit" id="btn-add-accounts" class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg transition">
+                                Lọc Trùng & Lưu TK / MK (200 Năm)
+                            </button>
+                        </form>
+
+                        <div id="accounts-import-summary" class="hidden p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1"></div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8">
+                    <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4">
+                        <div class="flex flex-col sm:flex-row gap-3 justify-between">
+                            <input type="text" id="search-accounts-input" oninput="renderAccountsList()" placeholder="Tìm kiếm tài khoản, dịch vụ, người tạo..."
+                                class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-purple-500 text-xs sm:text-sm text-white outline-none">
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" onclick="toggleRevealAllPasswords()" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 text-xs font-semibold transition">
+                                    <span id="reveal-all-label">Hiện tất cả MK</span>
+                                </button>
+                                <button type="button" onclick="exportAccountsFile('txt')" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 text-xs font-semibold transition">
+                                    Xuất .TXT
+                                </button>
+                                <button type="button" onclick="exportAccountsFile('csv')" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-semibold transition">
+                                    Xuất .CSV
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-xl border border-slate-800">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-900/95 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
+                                        <th class="py-3 px-4">Tài khoản</th>
+                                        <th class="py-3 px-3">Mật khẩu</th>
+                                        <th class="py-3 px-3">Dịch vụ</th>
+                                        <th class="py-3 px-3">Hạn 200 năm</th>
+                                        <th class="py-3 px-4 text-right">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accounts-table-body" class="divide-y divide-slate-800/70 text-xs sm:text-sm"></tbody>
+                            </table>
+                        </div>
+                        <div id="accounts-empty" class="hidden py-10 text-center text-xs sm:text-sm text-slate-400">
+                            Chưa có tài khoản/mật khẩu nào trong kho.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- WORKSPACE 3: STAFF & MEMBERS DIRECTORY     -->
+            <!-- ========================================== -->
+            <section id="workspace-members" class="hidden space-y-5">
+                <!-- Admin Staff Creator Box -->
+                <div id="admin-create-staff-panel" class="hidden glass-panel rounded-2xl p-5 border border-purple-500/30 space-y-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white">Tạo Tài Khoản Nhân Viên Mới (Bảo Lưu 200 Năm)</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Mật khẩu bắt buộc mạnh & không trùng tên • Nhân viên có thể tự đổi TK/MK sau khi đăng nhập</p>
+                    </div>
+
+                    <form onsubmit="handleCreateStaff(event)" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Tên tài khoản nhân viên</label>
+                            <input type="text" id="new-staff-username" required minlength="3" oninput="evaluateStaffPasswordStrength()" placeholder="VD: nhanvien_01"
+                                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-purple-500 text-xs sm:text-sm text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Mật khẩu mạnh khởi tạo</label>
+                            <input type="password" id="new-staff-password" required oninput="evaluateStaffPasswordStrength()" placeholder="VD: Staff@2026+"
+                                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-purple-500 text-xs sm:text-sm text-white outline-none">
+                            <p id="staff-strength-text" class="text-[11px] text-slate-400 mt-1">≥8 ký tự, Hoa, thường, số, đặc biệt, khác tên</p>
+                        </div>
+                        <div>
+                            <label class="hidden md:block text-xs font-semibold text-transparent mb-1">Tạo</label>
+                            <button type="submit" id="btn-create-staff" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg transition">
+                                Tạo Tài Khoản Nhân Viên
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-5 border border-slate-800 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h2 class="text-lg font-bold text-white">Danh Sách Nhân Viên & Thành Viên</h2>
+                            <p class="text-xs text-slate-400">Tài khoản Admin được quản lý riêng tại kho Admin Accounts. Mọi tài khoản có hạn 200 năm (73.000 ngày).</p>
+                        </div>
+                        <span class="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-xs font-bold text-cyan-300 self-start">
+                            Tổng: <span id="members-count-badge" class="font-mono">0</span> tài khoản
+                        </span>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-800">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-900/95 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
+                                    <th class="py-3 px-4">Tên tài khoản</th>
+                                    <th class="py-3 px-3">Vai trò</th>
+                                    <th class="py-3 px-3">Dữ liệu đã lưu</th>
+                                    <th class="py-3 px-3">Hạn 200 năm</th>
+                                    <th class="py-3 px-4 text-right">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="members-table-body" class="divide-y divide-slate-800/70 text-xs sm:text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- WORKSPACE 4: SEPARATE ADMIN ACCOUNTS VAULT -->
+            <!-- ========================================== -->
+            <section id="workspace-admin-accounts" class="hidden">
+                <div class="glass-panel rounded-2xl p-5 border border-amber-500/30 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-amber-200">Kho Tài Khoản Quản Trị Riêng Biệt (admin_accounts)</h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Tách riêng khỏi danh sách nhân viên & thành viên • Mặc định <code class="text-amber-300">ctvhehe</code> • Bảo lưu 200 năm</p>
+                        </div>
+                        <button type="button" onclick="openChangeCredModal()" class="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-bold transition self-start">
+                            Đổi TK / MK Admin Của Tôi
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-800">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-900/95 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-800">
+                                    <th class="py-3 px-4">Tài khoản Admin</th>
+                                    <th class="py-3 px-3">Mật khẩu</th>
+                                    <th class="py-3 px-3">Phân vùng</th>
+                                    <th class="py-3 px-3">Hạn 200 năm</th>
+                                    <th class="py-3 px-4 text-right">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-accounts-table-body" class="divide-y divide-slate-800/70 text-xs sm:text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="border-t border-slate-800/80 py-4 px-4 text-center text-xs text-slate-500">
+            Vault200 • Thêm & Lấy Key Không Trùng Lặp • Lưu Trữ 200 Năm (73.000 Ngày) • Cloudflare Resilient
+        </footer>
+    </div>
+
+    <!-- Optional Firebase Module Loader (Non-blocking, safe fallback if unavailable on Cloudflare) -->
+    <script type="module">
+        try {
+            const hasConfig = typeof window.__firebase_config !== 'undefined' && window.__firebase_config;
+            if (hasConfig) {
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js');
+                const { getAuth, signInAnonymously, signInWithCustomToken } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
+                const { getFirestore, collection, doc, setDoc, getDocs } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+
+                const parsedConfig = typeof window.__firebase_config === 'string'
+                    ? JSON.parse(window.__firebase_config)
+                    : window.__firebase_config;
+                const appId = typeof window.__app_id !== 'undefined' && window.__app_id
+                    ? String(window.__app_id)
+                    : 'vault200-cloudflare-app';
+
+                const fbApp = initializeApp(parsedConfig);
+                const fbAuth = getAuth(fbApp);
+                const fbDb = getFirestore(fbApp);
+
+                if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+                    await signInWithCustomToken(fbAuth, window.__initial_auth_token);
+                } else {
+                    await signInAnonymously(fbAuth);
+                }
+
+                window.__vaultCloudBridge = {
+                    db: fbDb,
+                    appId,
+                    collection,
+                    doc,
+                    setDoc,
+                    getDocs
+                };
+                if (typeof window.onCloudBridgeReady === 'function') {
+                    window.onCloudBridgeReady();
+                }
+            }
+        } catch (cloudErr) {
+            console.warn('Vault200 Cloud optional bridge fallback active:', cloudErr);
+        }
+    </script>
+
+    <!-- Core Application Logic (Self-contained, Cloudflare-safe) -->
+    <script>
+        (function () {
+            'use strict';
+
+            // 200 Years = 73,000 Days
+            const TWO_HUNDRED_YEARS_DAYS = 73000;
+            const TWO_HUNDRED_YEARS_MS = TWO_HUNDRED_YEARS_DAYS * 24 * 60 * 60 * 1000;
+
+            const SEED_ADMIN_USER = 'ctvhehe';
+            const SEED_ADMIN_PASS = 'phanchivy26+9';
+            const SEED_CHIVY_USER = 'Chivy';
+            const SEED_CHIVY_PASS = 'Chivy@Vault2026#9';
+
+            const STORAGE_KEY_V200 = 'vault200_resilient_state_v1';
+            const LEGACY_KEY_V365 = 'vault365_resilient_state_v3';
+            const IDB_NAME = 'Vault200ResilientDB';
+            const IDB_STORE = 'vault_snapshot';
+
+            // Application State
+            const state = {
+                adminAccounts: [],  // Separate Admin credentials vault (admin_accounts)
+                staffAccounts: [],  // Staff accounts vault (staff_accounts)
+                memberAccounts: [], // Standard member accounts vault (user_accounts)
+                keys: [],           // Master unique keys vault (200 years)
+                accounts: [],       // Unique TK|MK vault (200 years)
+                lastDispensedKeys: [],
+                currentUser: null,
+                activeTab: 'keys',
+                keysSubView: 'available', // 'available' | 'dispensed' | 'all'
+                scopeFilter: 'all',
+                revealAllPasswords: false,
+                revealedIds: new Set(),
+                cloudConnected: false
+            };
+
+            // ==========================================
+            // 1. RESILIENT STORAGE (IDB + LOCAL + CLOUD)
+            // ==========================================
+            function openResilientIDB() {
+                return new Promise((resolve) => {
+                    try {
+                        if (!('indexedDB' in window)) return resolve(null);
+                        const req = indexedDB.open(IDB_NAME, 1);
+                        req.onupgradeneeded = (event) => {
+                            const db = event.target.result;
+                            if (!db.objectStoreNames.contains(IDB_STORE)) {
+                                db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+                            }
+                        };
+                        req.onsuccess = () => resolve(req.result);
+                        req.onerror = () => resolve(null);
+                    } catch (_) {
+                        resolve(null);
+                    }
+                });
+            }
+
+            async function writeSnapshotToIDB(snapshot) {
+                try {
+                    const db = await openResilientIDB();
+                    if (!db) return;
+                    const tx = db.transaction(IDB_STORE, 'readwrite');
+                    const store = tx.objectStore(IDB_STORE);
+                    store.put({ id: 'primary_state', payload: snapshot, updatedAt: Date.now() });
+                } catch (_) {}
+            }
+
+            async function readSnapshotFromIDB() {
+                try {
+                    const db = await openResilientIDB();
+                    if (!db) return null;
+                    return await new Promise((resolve) => {
+                        const tx = db.transaction(IDB_STORE, 'readonly');
+                        const store = tx.objectStore(IDB_STORE);
+                        const req = store.get('primary_state');
+                        req.onsuccess = () => resolve(req.result ? req.result.payload : null);
+                        req.onerror = () => resolve(null);
+                    });
+                } catch (_) {
+                    return null;
+                }
+            }
+
+            function buildSnapshot() {
+                return {
+                    adminAccounts: state.adminAccounts,
+                    staffAccounts: state.staffAccounts,
+                    memberAccounts: state.memberAccounts,
+                    keys: state.keys,
+                    accounts: state.accounts
+                };
+            }
+
+            function applySnapshot(raw) {
+                if (!raw || typeof raw !== 'object') return;
+                state.adminAccounts = Array.isArray(raw.adminAccounts) ? raw.adminAccounts : [];
+                state.staffAccounts = Array.isArray(raw.staffAccounts) ? raw.staffAccounts : [];
+                state.memberAccounts = Array.isArray(raw.memberAccounts) ? raw.memberAccounts : [];
+                state.keys = Array.isArray(raw.keys)
+                    ? raw.keys.map((k) => ({
+                        ...k,
+                        status: k.status === 'used' ? 'dispensed' : (k.status || 'available')
+                    }))
+                    : [];
+                state.accounts = Array.isArray(raw.accounts) ? raw.accounts : [];
+            }
+
+            function ensureDefaultAccountsSeeded() {
+                const now = Date.now();
+                const hasSeedAdmin = state.adminAccounts.some(
+                    (a) => normalizeUsername(a.username) === normalizeUsername(SEED_ADMIN_USER)
+                );
+                if (!hasSeedAdmin) {
+                    state.adminAccounts.unshift({
+                        id: 'admin_seed_ctvhehe',
+                        username: SEED_ADMIN_USER,
+                        password: SEED_ADMIN_PASS,
+                        role: 'admin',
+                        createdAt: now,
+                        expiresAt: now + TWO_HUNDRED_YEARS_MS,
+                        isSeeded: true
+                    });
+                }
+
+                const hasSeedChivy = state.memberAccounts.some(
+                    (m) => normalizeUsername(m.username) === normalizeUsername(SEED_CHIVY_USER)
+                );
+                if (!hasSeedChivy) {
+                    state.memberAccounts.unshift({
+                        id: 'user_seed_chivy',
+                        username: SEED_CHIVY_USER,
+                        password: SEED_CHIVY_PASS,
+                        role: 'user',
+                        createdAt: now,
+                        expiresAt: now + TWO_HUNDRED_YEARS_MS,
+                        isSeeded: true
+                    });
+                }
+            }
+
+            async function persistAllState() {
+                ensureDefaultAccountsSeeded();
+                const snap = buildSnapshot();
+                try {
+                    localStorage.setItem(STORAGE_KEY_V200, JSON.stringify(snap));
+                } catch (_) {}
+                await writeSnapshotToIDB(snap);
+                await syncSnapshotToCloudIfAvailable(snap);
+            }
+
+            async function syncSnapshotToCloudIfAvailable(snap) {
+                const bridge = window.__vaultCloudBridge;
+                if (!bridge) return;
+                try {
+                    const docRef = bridge.doc(bridge.db, 'artifacts', bridge.appId, 'public', 'data', 'vault200_snapshot', 'main_store');
+                    await bridge.setDoc(docRef, {
+                        ...snap,
+                        syncedAt: Date.now()
+                    }, { merge: true });
+                    state.cloudConnected = true;
+                    updateStorageIndicators();
+                } catch (_) {}
+            }
+
+            window.onCloudBridgeReady = async function () {
+                const bridge = window.__vaultCloudBridge;
+                if (!bridge) return;
+                try {
+                    const snapDoc = await bridge.getDocs(
+                        bridge.collection(bridge.db, 'artifacts', bridge.appId, 'public', 'data', 'vault200_snapshot')
+                    );
+                    let remotePayload = null;
+                    snapDoc.forEach((d) => {
+                        if (d.id === 'main_store') remotePayload = d.data();
+                    });
+
+                    if (remotePayload && Array.isArray(remotePayload.adminAccounts)) {
+                        const localTotal = state.keys.length + state.accounts.length + state.staffAccounts.length + state.memberAccounts.length;
+                        const remoteTotal = (remotePayload.keys?.length || 0) + (remotePayload.accounts?.length || 0) +
+                            (remotePayload.staffAccounts?.length || 0) + (remotePayload.memberAccounts?.length || 0);
+                        if (remoteTotal >= localTotal) {
+                            applySnapshot(remotePayload);
+                            ensureDefaultAccountsSeeded();
+                            localStorage.setItem(STORAGE_KEY_V200, JSON.stringify(buildSnapshot()));
+                            await writeSnapshotToIDB(buildSnapshot());
+                        }
+                    }
+                    state.cloudConnected = true;
+                    updateStorageIndicators();
+                    refreshAllViews();
+                } catch (_) {}
+            };
+
+            function updateStorageIndicators() {
+                const dot = document.getElementById('storage-status-dot');
+                const txt = document.getElementById('storage-status-text');
+                const headerBadge = document.getElementById('header-storage-badge');
+                if (state.cloudConnected) {
+                    if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+                    if (txt) txt.textContent = 'Đồng bộ Cloud + Bộ nhớ bền vững 200 năm (Sẵn sàng)';
+                    if (headerBadge) headerBadge.textContent = 'Cloudflare + Cloud Sync • Bảo lưu 200 năm';
+                } else {
+                    if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-cyan-400';
+                    if (txt) txt.textContent = 'Kho lưu trữ bền vững IndexedDB + LocalStorage (200 năm)';
+                    if (headerBadge) headerBadge.textContent = 'Cloudflare Resilient Vault • Bảo lưu 200 năm';
+                }
+            }
+
+            // ==========================================
+            // 2. STRONG PASSWORD & USERNAME POLICY
+            // ==========================================
+            function normalizeUsername(u) {
+                return String(u || '').trim().toLowerCase();
+            }
+
+            function stripAccentsAndPunct(str) {
+                return String(str || '')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-zA-Z0-9]/g, '')
+                    .toLowerCase();
+            }
+
+            function getAllSystemUsers() {
+                return [
+                    ...state.adminAccounts.map((u) => ({ ...u, role: 'admin', vaultGroup: 'admin_accounts' })),
+                    ...state.staffAccounts.map((u) => ({ ...u, role: 'staff', vaultGroup: 'staff_accounts' })),
+                    ...state.memberAccounts.map((u) => ({ ...u, role: 'user', vaultGroup: 'user_accounts' }))
+                ];
+            }
+
+            function isUsernameDuplicate(candidateUsername, ignoreUserId = null) {
+                const normTarget = normalizeUsername(candidateUsername);
+                if (!normTarget) return true;
+                return getAllSystemUsers().some((u) => {
+                    if (ignoreUserId && u.id === ignoreUserId) return false;
+                    return normalizeUsername(u.username) === normTarget;
+                });
+            }
+
+            function validateStrongPassword(password, usernameList = []) {
+                const pwd = String(password || '');
+                const hasMinLength = pwd.length >= 8;
+                const hasUpper = /[A-Z]/.test(pwd);
+                const hasLower = /[a-z]/.test(pwd);
+                const hasDigit = /[0-9]/.test(pwd);
+                const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+
+                let notMatchingUsername = true;
+                const lowerPwd = pwd.toLowerCase();
+                const strippedPwd = stripAccentsAndPunct(pwd);
+
+                for (const rawName of usernameList) {
+                    const cleanName = String(rawName || '').trim().toLowerCase();
+                    const strippedName = stripAccentsAndPunct(rawName);
+                    if (cleanName.length >= 2) {
+                        if (lowerPwd === cleanName || lowerPwd.includes(cleanName) || cleanName.includes(lowerPwd)) {
+                            notMatchingUsername = false;
+                            break;
+                        }
+                    }
+                    if (strippedName.length >= 2 && strippedPwd.length > 0) {
+                        if (strippedPwd === strippedName || strippedPwd.includes(strippedName) || strippedName.includes(strippedPwd)) {
+                            notMatchingUsername = false;
+                            break;
+                        }
+                    }
+                }
+
+                const checks = {
+                    hasMinLength,
+                    hasUpper,
+                    hasLower,
+                    hasDigit,
+                    hasSpecial,
+                    notMatchingUsername
+                };
+
+                const passed = Object.values(checks).filter(Boolean).length;
+                const valid = Object.values(checks).every(Boolean);
+
+                let label = 'Yếu';
+                let labelColor = 'text-rose-400';
+                let barColor = 'bg-rose-500';
+                const percent = Math.max(12, Math.round((passed / 6) * 100));
+
+                if (valid && pwd.length >= 10) {
+                    label = 'Rất mạnh';
+                    labelColor = 'text-emerald-400';
+                    barColor = 'bg-emerald-500';
+                } else if (valid) {
+                    label = 'Mạnh';
+                    labelColor = 'text-cyan-400';
+                    barColor = 'bg-cyan-500';
+                } else if (passed >= 4) {
+                    label = 'Trung bình';
+                    labelColor = 'text-amber-400';
+                    barColor = 'bg-amber-500';
+                }
+
+                return { valid, checks, label, labelColor, barColor, percent };
+            }
+
+            function buildPolicyChecklistHtml(checks) {
+                const rules = [
+                    { ok: checks.hasMinLength, text: 'Tối thiểu 8 ký tự' },
+                    { ok: checks.hasUpper, text: 'Chữ hoa (A-Z)' },
+                    { ok: checks.hasLower, text: 'Chữ thường (a-z)' },
+                    { ok: checks.hasDigit, text: 'Chữ số (0-9)' },
+                    { ok: checks.hasSpecial, text: 'Ký tự đặc biệt (!@#$...)' },
+                    { ok: checks.notMatchingUsername, text: 'Không trùng/chứa tên TK' }
+                ];
+                return rules
+                    .map(
+                        (r) => `<li class="flex items-center gap-1.5 ${r.ok ? 'text-emerald-300' : 'text-slate-500'}">
+                            <span>${r.ok ? '✓' : '•'}</span>
+                            <span>${r.text}</span>
+                        </li>`
+                    )
+                    .join('');
+            }
+
+            window.evaluateRegisterStrength = function () {
+                const u = document.getElementById('reg-username')?.value || '';
+                const p = document.getElementById('reg-password')?.value || '';
+                const evalRes = validateStrongPassword(p, [u]);
+
+                const labelEl = document.getElementById('reg-strength-label');
+                const barEl = document.getElementById('reg-strength-bar');
+                const listEl = document.getElementById('reg-strength-list');
+
+                if (labelEl) {
+                    labelEl.textContent = p ? evalRes.label : 'Chưa nhập';
+                    labelEl.className = `font-bold ${p ? evalRes.labelColor : 'text-slate-400'}`;
+                }
+                if (barEl) {
+                    barEl.style.width = p ? `${evalRes.percent}%` : '0%';
+                    barEl.className = `h-full transition-all duration-300 ${evalRes.barColor}`;
+                }
+                if (listEl) {
+                    listEl.innerHTML = buildPolicyChecklistHtml(evalRes.checks);
+                }
+            };
+
+            window.evaluateStaffPasswordStrength = function () {
+                const u = document.getElementById('new-staff-username')?.value || '';
+                const p = document.getElementById('new-staff-password')?.value || '';
+                const textEl = document.getElementById('staff-strength-text');
+                if (!textEl) return;
+                if (!p) {
+                    textEl.textContent = '≥8 ký tự, Hoa, thường, số, đặc biệt, khác tên';
+                    textEl.className = 'text-[11px] text-slate-400 mt-1';
+                    return;
+                }
+                const evalRes = validateStrongPassword(p, [u]);
+                textEl.textContent = `Độ mạnh: ${evalRes.label} • ${evalRes.valid ? 'Hợp lệ' : 'Chưa đạt đủ điều kiện'}`;
+                textEl.className = `text-[11px] font-semibold mt-1 ${evalRes.labelColor}`;
+            };
+
+            window.evaluateCredChangeStrength = function () {
+                const newUser = document.getElementById('cred-new-username')?.value || '';
+                const oldUser = state.currentUser?.username || '';
+                const newPass = document.getElementById('cred-new-password')?.value || '';
+                const evalRes = validateStrongPassword(newPass, [newUser, oldUser]);
+
+                const labelEl = document.getElementById('cred-strength-label');
+                const barEl = document.getElementById('cred-strength-bar');
+                const listEl = document.getElementById('cred-strength-list');
+
+                if (labelEl) {
+                    labelEl.textContent = newPass ? evalRes.label : 'Chưa nhập';
+                    labelEl.className = `font-bold ${newPass ? evalRes.labelColor : 'text-slate-400'}`;
+                }
+                if (barEl) {
+                    barEl.style.width = newPass ? `${evalRes.percent}%` : '0%';
+                    barEl.className = `h-full transition-all duration-300 ${evalRes.barColor}`;
+                }
+                if (listEl) {
+                    listEl.innerHTML = buildPolicyChecklistHtml(evalRes.checks);
+                }
+            };
+
+            // ==========================================
+            // 3. UI FEEDBACK, MODALS & 200-YEAR HELPERS
+            // ==========================================
+            function showToast(msg, type = 'success') {
+                const container = document.getElementById('toast-container');
+                if (!container) return;
+                const palette = {
+                    success: 'bg-slate-900/95 border-emerald-500/50 text-emerald-300',
+                    error: 'bg-slate-900/95 border-rose-500/50 text-rose-300',
+                    warning: 'bg-slate-900/95 border-amber-500/50 text-amber-300',
+                    info: 'bg-slate-900/95 border-cyan-500/50 text-cyan-300'
+                };
+                const badge = {
+                    success: '✓',
+                    error: '✕',
+                    warning: '!',
+                    info: 'i'
+                };
+                const el = document.createElement('div');
+                el.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-2xl text-xs sm:text-sm font-medium transition-all duration-300 ${palette[type] || palette.info}`;
+                el.innerHTML = `<span class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs shrink-0">${badge[type] || 'i'}</span><span class="flex-1">${escapeHtml(msg)}</span>`;
+                container.appendChild(el);
+
+                setTimeout(() => {
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 250);
+                }, 3400);
+            }
+
+            function openConfirmDialog(title, message, onConfirm) {
+                const modal = document.getElementById('confirm-modal');
+                document.getElementById('confirm-title').textContent = title;
+                document.getElementById('confirm-message').textContent = message;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                const okBtn = document.getElementById('confirm-ok-btn');
+                const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+                const close = () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    okBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                };
+
+                cancelBtn.onclick = close;
+                okBtn.onclick = async () => {
+                    close();
+                    await onConfirm();
+                };
+            }
+
+            function formatDateVN(ts) {
+                if (!ts) return 'N/A';
+                try {
+                    return new Date(Number(ts)).toLocaleDateString('vi-VN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                } catch (_) {
+                    return 'N/A';
+                }
+            }
+
+            function formatDateTimeVN(ts) {
+                if (!ts) return '';
+                try {
+                    return new Date(Number(ts)).toLocaleString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                } catch (_) {
+                    return '';
+                }
+            }
+
+            function calcRetention200Years(expiresAt) {
+                const diff = (Number(expiresAt) || (Date.now() + TWO_HUNDRED_YEARS_MS)) - Date.now();
+                const daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+                const yearsLeft = Math.floor(daysLeft / 365);
+                return {
+                    expired: diff <= 0,
+                    daysLeft,
+                    yearsLeft
+                };
+            }
+
+            function copyToClipboard(text, label) {
+                try {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    showToast(`Đã sao chép ${label}.`, 'success');
+                } catch (_) {
+                    showToast('Không thể sao chép tự động.', 'error');
+                }
+            }
+
+            function escapeHtml(s) {
+                return String(s || '').replace(/[&<>"']/g, (ch) => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[ch]));
+            }
+
+            function escapeJsArg(s) {
+                return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            }
+
+            // ==========================================
+            // 4. AUTHENTICATION (LOGIN & REGISTER)
+            // ==========================================
+            window.switchAuthMode = function (mode) {
+                const loginForm = document.getElementById('login-form');
+                const regForm = document.getElementById('register-form');
+                const tabLogin = document.getElementById('auth-tab-login');
+                const tabReg = document.getElementById('auth-tab-register');
+
+                if (mode === 'register') {
+                    loginForm.classList.add('hidden');
+                    regForm.classList.remove('hidden');
+                    tabReg.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 transition';
+                    tabLogin.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold text-slate-400 hover:text-white border border-transparent transition';
+                    evaluateRegisterStrength();
+                } else {
+                    regForm.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                    tabLogin.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 transition';
+                    tabReg.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold text-slate-400 hover:text-white border border-transparent transition';
+                }
+            };
+
+            window.handleRegister = async function (event) {
+                event.preventDefault();
+                const btn = document.getElementById('btn-register');
+                try {
+                    const usernameInput = document.getElementById('reg-username').value.trim();
+                    const passwordInput = document.getElementById('reg-password').value;
+
+                    if (usernameInput.length < 3) {
+                        showToast('Tên tài khoản phải có ít nhất 3 ký tự.', 'error');
+                        return;
+                    }
+
+                    if (isUsernameDuplicate(usernameInput)) {
+                        showToast(`Tên tài khoản "${usernameInput}" đã tồn tại. Vui lòng chọn tên khác.`, 'error');
+                        return;
+                    }
+
+                    const strength = validateStrongPassword(passwordInput, [usernameInput]);
+                    if (!strength.valid) {
+                        evaluateRegisterStrength();
+                        showToast('Mật khẩu chưa đạt chuẩn mạnh hoặc trùng/chứa tên tài khoản!', 'error');
+                        return;
+                    }
+
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.textContent = 'Đang tạo tài khoản 200 năm...';
+                    }
+
+                    const now = Date.now();
+                    const expiresAt = now + TWO_HUNDRED_YEARS_MS;
+                    const role = 'user';
+
+                    const newRecord = {
+                        id: `${role}_${now}_${Math.random().toString(36).slice(2, 8)}`,
+                        username: usernameInput,
+                        password: passwordInput,
+                        role,
+                        createdAt: now,
+                        expiresAt
+                    };
+
+                    state.memberAccounts.push({ ...newRecord, vaultGroup: 'user_accounts' });
+
+                    await persistAllState();
+
+                    state.currentUser = {
+                        ...newRecord,
+                        vaultGroup: 'user_accounts'
+                    };
+
+                    document.getElementById('register-form').reset();
+                    evaluateRegisterStrength();
+                    showDashboard();
+                    showToast(`Đăng ký tài khoản "${usernameInput}" thành công! Hạn lưu 200 năm.`, 'success');
+                } catch (err) {
+                    console.error('Register error:', err);
+                    showToast('Đã xảy ra lỗi khi đăng ký, vui lòng thử lại.', 'error');
+                } finally {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = 'Đăng Ký & Kích Hoạt 200 Năm';
+                    }
+                }
+            };
+
+            window.handleLogin = async function (event) {
+                event.preventDefault();
+                try {
+                    ensureDefaultAccountsSeeded();
+                    const userVal = normalizeUsername(document.getElementById('login-username').value);
+                    const passVal = document.getElementById('login-password').value;
+
+                    const matched = getAllSystemUsers().find(
+                        (u) => normalizeUsername(u.username) === userVal && u.password === passVal
+                    );
+
+                    if (!matched) {
+                        showToast('Sai tên tài khoản hoặc mật khẩu!', 'error');
+                        return;
+                    }
+
+                    const { expired } = calcRetention200Years(matched.expiresAt);
+                    if (expired) {
+                        showToast('Tài khoản đã hết hạn lưu trữ 200 năm.', 'error');
+                        return;
+                    }
+
+                    state.currentUser = matched;
+                    document.getElementById('login-form').reset();
+                    showDashboard();
+                    showToast(`Đăng nhập thành công với tài khoản ${matched.username} (${matched.role.toUpperCase()}).`, 'success');
+                } catch (err) {
+                    console.error('Login error:', err);
+                    showToast('Lỗi đăng nhập, vui lòng thử lại.', 'error');
+                }
+            };
+
+            window.handleLogout = function () {
+                state.currentUser = null;
+                state.activeTab = 'keys';
+                state.scopeFilter = 'all';
+                document.getElementById('main-app').classList.add('hidden');
+                document.getElementById('auth-screen').classList.remove('hidden');
+                switchAuthMode('login');
+                showToast('Đã đăng xuất khỏi hệ thống.', 'info');
+            };
+
+            function showDashboard() {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                switchWorkspaceTab('keys');
+                refreshAllViews();
+            }
+
+            // ==========================================
+            // 5. SELF-SERVICE CREDENTIAL CHANGE (ADMIN & STAFF)
+            // ==========================================
+            window.openChangeCredModal = function () {
+                const user = state.currentUser;
+                if (!user || !['admin', 'staff'].includes(user.role)) {
+                    showToast('Chỉ tài khoản Admin và Nhân viên mới được phép tự đổi TK/MK.', 'warning');
+                    return;
+                }
+
+                document.getElementById('change-cred-subtitle').textContent =
+                    user.role === 'admin'
+                        ? 'Kho Admin Riêng (admin_accounts) • Mật khẩu mạnh không trùng tên'
+                        : 'Kho Nhân Viên (staff_accounts) • Mật khẩu mạnh không trùng tên';
+
+                document.getElementById('cred-current-password').value = '';
+                document.getElementById('cred-new-username').value = user.username;
+                document.getElementById('cred-new-password').value = '';
+                evaluateCredChangeStrength();
+
+                const modal = document.getElementById('change-cred-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            };
+
+            window.closeChangeCredModal = function () {
+                const modal = document.getElementById('change-cred-modal');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            };
+
+            window.handleSelfCredentialChange = async function (event) {
+                event.preventDefault();
+                const user = state.currentUser;
+                if (!user || !['admin', 'staff'].includes(user.role)) return;
+
+                const currentPwd = document.getElementById('cred-current-password').value;
+                const newUsername = document.getElementById('cred-new-username').value.trim();
+                const newPassword = document.getElementById('cred-new-password').value;
+
+                if (currentPwd !== user.password) {
+                    showToast('Mật khẩu hiện tại không đúng!', 'error');
+                    return;
+                }
+
+                if (newUsername.length < 3) {
+                    showToast('Tên tài khoản mới phải có ít nhất 3 ký tự.', 'error');
+                    return;
+                }
+
+                if (isUsernameDuplicate(newUsername, user.id)) {
+                    showToast(`Tên tài khoản "${newUsername}" đã được tài khoản khác sử dụng!`, 'error');
+                    return;
+                }
+
+                const strength = validateStrongPassword(newPassword, [newUsername, user.username]);
+                if (!strength.valid) {
+                    evaluateCredChangeStrength();
+                    showToast('Mật khẩu mới yếu hoặc trùng/chứa tên tài khoản!', 'error');
+                    return;
+                }
+
+                const targetList = user.role === 'admin' ? state.adminAccounts : state.staffAccounts;
+                const item = targetList.find((x) => x.id === user.id);
+                if (!item) {
+                    showToast('Không tìm thấy bản ghi tài khoản hiện tại.', 'error');
+                    return;
+                }
+
+                item.username = newUsername;
+                item.password = newPassword;
+
+                await persistAllState();
+
+                state.currentUser = {
+                    ...item,
+                    role: user.role,
+                    vaultGroup: user.role === 'admin' ? 'admin_accounts' : 'staff_accounts'
+                };
+
+                closeChangeCredModal();
+                refreshAllViews();
+                showToast(`Đã cập nhật thành công TK "${newUsername}" và mật khẩu mới!`, 'success');
+            };
+
+            // ==========================================
+            // 6. ADMIN CREATE STAFF & 200-YEAR RENEWAL
+            // ==========================================
+            window.handleCreateStaff = async function (event) {
+                event.preventDefault();
+                if (!state.currentUser || state.currentUser.role !== 'admin') {
+                    showToast('Chỉ Admin mới có thể tạo tài khoản nhân viên.', 'error');
+                    return;
+                }
+
+                const staffUser = document.getElementById('new-staff-username').value.trim();
+                const staffPass = document.getElementById('new-staff-password').value;
+
+                if (staffUser.length < 3) {
+                    showToast('Tên nhân viên phải có ít nhất 3 ký tự.', 'error');
+                    return;
+                }
+
+                if (isUsernameDuplicate(staffUser)) {
+                    showToast(`Tên tài khoản "${staffUser}" đã tồn tại!`, 'error');
+                    return;
+                }
+
+                const strength = validateStrongPassword(staffPass, [staffUser]);
+                if (!strength.valid) {
+                    evaluateStaffPasswordStrength();
+                    showToast('Mật khẩu nhân viên phải mạnh và không trùng tên tài khoản!', 'error');
+                    return;
+                }
+
+                const now = Date.now();
+                state.staffAccounts.push({
+                    id: `staff_${now}_${Math.random().toString(36).slice(2, 7)}`,
+                    username: staffUser,
+                    password: staffPass,
+                    role: 'staff',
+                    createdAt: now,
+                    expiresAt: now + TWO_HUNDRED_YEARS_MS,
+                    createdBy: state.currentUser.username
+                });
+
+                await persistAllState();
+                document.getElementById('new-staff-username').value = '';
+                document.getElementById('new-staff-password').value = '';
+                evaluateStaffPasswordStrength();
+                refreshAllViews();
+                showToast(`Đã tạo tài khoản nhân viên "${staffUser}" (Hạn 200 năm).`, 'success');
+            };
+
+            window.deleteSystemAccount = function (userId, username, role) {
+                if (!state.currentUser || state.currentUser.role !== 'admin') return;
+                if (userId === state.currentUser.id) {
+                    showToast('Không thể xóa tài khoản Admin đang đăng nhập.', 'warning');
+                    return;
+                }
+
+                openConfirmDialog(
+                    'Xóa tài khoản hệ thống',
+                    `Bạn có chắc muốn xóa tài khoản "${username}" (${role}) khỏi hệ thống không?`,
+                    async () => {
+                        state.adminAccounts = state.adminAccounts.filter((u) => u.id !== userId);
+                        state.staffAccounts = state.staffAccounts.filter((u) => u.id !== userId);
+                        state.memberAccounts = state.memberAccounts.filter((u) => u.id !== userId);
+                        await persistAllState();
+                        refreshAllViews();
+                        showToast(`Đã xóa tài khoản "${username}".`, 'success');
+                    }
+                );
+            };
+
+            window.openProfileModal = function () {
+                const user = state.currentUser;
+                if (!user) return;
+                const { daysLeft, yearsLeft } = calcRetention200Years(user.expiresAt);
+                const myKeys = state.keys.filter((k) => k.ownerId === user.id).length;
+                const myAccs = state.accounts.filter((a) => a.ownerId === user.id).length;
+
+                const canChangeCred = ['admin', 'staff'].includes(user.role);
+                const credBtn = document.getElementById('profile-change-cred-btn');
+                if (credBtn) {
+                    credBtn.classList.toggle('hidden', !canChangeCred);
+                }
+
+                document.getElementById('profile-modal-content').innerHTML = `
+                    <div class="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2">
+                        <div class="flex justify-between"><span class="text-slate-400">Tên tài khoản:</span><span class="font-bold text-white">${escapeHtml(user.username)}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Vai trò:</span><span class="font-bold uppercase text-cyan-400">${escapeHtml(user.role)}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Ngày tạo:</span><span class="font-mono text-slate-200">${formatDateVN(user.createdAt)}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Hết hạn (200 năm):</span><span class="font-mono text-emerald-400">${formatDateVN(user.expiresAt)} (~${yearsLeft} năm / ${daysLeft.toLocaleString('vi-VN')} ngày)</span></div>
+                        <div class="flex justify-between pt-2 border-t border-slate-800"><span class="text-slate-400">Dữ liệu đã lưu:</span><span class="font-semibold text-white">${myKeys} Key • ${myAccs} TK/MK</span></div>
+                    </div>
+                `;
+
+                const modal = document.getElementById('profile-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            };
+
+            window.closeProfileModal = function () {
+                const modal = document.getElementById('profile-modal');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            };
+
+            window.renewCurrentUser200Years = async function () {
+                const user = state.currentUser;
+                if (!user) return;
+                const newExp = Date.now() + TWO_HUNDRED_YEARS_MS;
+
+                const allLists = [state.adminAccounts, state.staffAccounts, state.memberAccounts];
+                for (const list of allLists) {
+                    const target = list.find((u) => u.id === user.id);
+                    if (target) target.expiresAt = newExp;
+                }
+                state.currentUser.expiresAt = newExp;
+
+                await persistAllState();
+                refreshAllViews();
+                openProfileModal();
+                showToast(`Đã gia hạn thêm 200 năm (đến ${formatDateVN(newExp)}).`, 'success');
+            };
+
+            // ==========================================================
+            // 7. ADD KEYS & DISPENSE UNIQUE KEYS SYSTEM (200 YEARS)
+            // ==========================================================
+            window.insertSampleKeys = function () {
+                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                const block = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+                const ta = document.getElementById('keys-batch-input');
+                const generated = Array.from({ length: 5 }, () => `V200-${block()}-${block()}-${block()}`);
+                ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + generated.join('\n');
+            };
+
+            window.handleAddKeysBatch = async function (event) {
+                event.preventDefault();
+                if (!state.currentUser) return;
+
+                const rawLines = document.getElementById('keys-batch-input').value
+                    .split(/\r?\n/)
+                    .map((l) => l.trim())
+                    .filter(Boolean);
+
+                if (!rawLines.length) {
+                    showToast('Vui lòng nhập ít nhất 1 mã Key.', 'warning');
+                    return;
+                }
+
+                const plan = document.getElementById('keys-plan-input').value.trim() || 'Gói 200 Năm';
+                const note = document.getElementById('keys-note-input').value.trim() || 'Kho lưu trữ 200 năm';
+
+                // Check against ALL historical & available keys so dispensed keys can NEVER be re-added
+                const existingSet = new Set(state.keys.map((k) => String(k.code).trim().toLowerCase()));
+                const batchSet = new Set();
+
+                const accepted = [];
+                let dupDb = 0;
+                let dupBatch = 0;
+
+                for (const code of rawLines) {
+                    const lower = code.toLowerCase();
+                    if (existingSet.has(lower)) {
+                        dupDb++;
+                    } else if (batchSet.has(lower)) {
+                        dupBatch++;
+                    } else {
+                        batchSet.add(lower);
+                        accepted.push(code);
+                    }
+                }
+
+                const now = Date.now();
+                const expiresAt = now + TWO_HUNDRED_YEARS_MS;
+
+                for (const code of accepted) {
+                    state.keys.unshift({
+                        id: `key_${now}_${Math.random().toString(36).slice(2, 8)}`,
+                        code,
+                        plan,
+                        note,
+                        status: 'available', // 'available' | 'dispensed'
+                        createdAt: now,
+                        expiresAt,
+                        ownerId: state.currentUser.id,
+                        ownerName: state.currentUser.username,
+                        dispensedAt: null,
+                        dispensedBy: null,
+                        dispenseMode: null
+                    });
+                }
+
+                await persistAllState();
+
+                const summaryBox = document.getElementById('keys-import-summary');
+                summaryBox.classList.remove('hidden');
+                summaryBox.innerHTML = `
+                    <p class="text-emerald-400 font-bold">✓ Đã nạp mới: ${accepted.length} key (Hạn 200 năm / 73.000 ngày)</p>
+                    <p class="text-amber-400">⚠ Trùng trong kho / lịch sử bị loại: ${dupDb} key</p>
+                    <p class="text-slate-400">• Trùng dòng vừa nhập bị loại: ${dupBatch} key</p>
+                `;
+
+                if (accepted.length > 0) {
+                    document.getElementById('keys-batch-input').value = '';
+                    showToast(`Đã nạp ${accepted.length} mã Key không trùng (Hạn 200 năm)!`, 'success');
+                } else {
+                    showToast('Tất cả Key nhập vào đều đã tồn tại hoặc từng được lấy ra trước đó.', 'warning');
+                }
+
+                refreshAllViews();
+            };
+
+            function getAvailableKeysPool(planFilter = '') {
+                const planQuery = String(planFilter || '').trim().toLowerCase();
+                return state.keys.filter((k) => {
+                    if (state.scopeFilter === 'mine' && state.currentUser && k.ownerId !== state.currentUser.id) {
+                        return false;
+                    }
+                    const { expired } = calcRetention200Years(k.expiresAt);
+                    if (expired || k.status !== 'available') return false;
+                    if (planQuery) {
+                        const hay = `${k.plan} ${k.note}`.toLowerCase();
+                        return hay.includes(planQuery);
+                    }
+                    return true;
+                });
+            }
+
+            window.dispenseUniqueKeys = async function (requestedQty) {
+                if (!state.currentUser) return;
+                const qty = Math.max(1, parseInt(requestedQty, 10) || 1);
+                const planFilter = document.getElementById('dispense-filter-plan')?.value || '';
+                const modeRadio = document.querySelector('input[name="dispense-mode"]:checked');
+                const mode = modeRadio ? modeRadio.value : 'move_history';
+
+                const pool = getAvailableKeysPool(planFilter);
+                if (!pool.length) {
+                    showToast('Không còn Key khả dụng nào phù hợp trong kho để lấy!', 'warning');
+                    return;
+                }
+
+                const actualTake = Math.min(qty, pool.length);
+                // FIFO from oldest available keys so keys rotate cleanly without duplicates
+                const orderedPool = [...pool].reverse();
+                const picked = orderedPool.slice(0, actualTake);
+
+                const now = Date.now();
+                const takenCodes = [];
+
+                for (const item of picked) {
+                    item.status = 'dispensed';
+                    item.dispensedAt = now;
+                    item.dispensedBy = state.currentUser.username;
+                    item.dispenseMode = mode;
+                    takenCodes.push(item.code);
+                }
+
+                state.lastDispensedKeys = takenCodes;
+                await persistAllState();
+
+                const outBox = document.getElementById('dispensed-output-box');
+                const countSpan = document.getElementById('last-dispensed-count');
+                if (outBox) outBox.value = takenCodes.join('\n');
+                if (countSpan) countSpan.textContent = takenCodes.length;
+
+                if (qty > pool.length) {
+                    showToast(`Kho chỉ còn ${actualTake} key khả dụng. Đã lấy toàn bộ ${actualTake} key không trùng!`, 'info');
+                } else {
+                    showToast(`Đã lấy ra ${actualTake} Key không trùng lặp!`, 'success');
+                }
+
+                refreshAllViews();
+            };
+
+            window.handleCustomDispense = function () {
+                const qtyInput = document.getElementById('dispense-qty-input');
+                const qty = Math.max(1, parseInt(qtyInput?.value, 10) || 1);
+                dispenseUniqueKeys(qty);
+            };
+
+            window.copyLastDispensedKeys = function () {
+                const text = document.getElementById('dispensed-output-box')?.value.trim();
+                if (!text) {
+                    showToast('Chưa có Key nào vừa lấy ra để sao chép.', 'warning');
+                    return;
+                }
+                copyToClipboard(text, `${state.lastDispensedKeys.length} Key vừa lấy`);
+            };
+
+            window.downloadLastDispensedTxt = function () {
+                const text = document.getElementById('dispensed-output-box')?.value.trim();
+                if (!text) {
+                    showToast('Chưa có Key nào vừa lấy ra để tải file.', 'warning');
+                    return;
+                }
+                triggerDownload(text, `Vault200_KeyDaLay_${Date.now()}.txt`, 'text/plain;charset=utf-8');
+                showToast(`Đã tải ${state.lastDispensedKeys.length} Key vừa lấy ra file .TXT.`, 'success');
+            };
+
+            window.switchKeysSubView = function (view) {
+                state.keysSubView = view;
+                const views = ['available', 'dispensed', 'all'];
+                for (const v of views) {
+                    const btn = document.getElementById(`keys-subtab-${v}`);
+                    if (!btn) continue;
+                    if (v === view) {
+                        btn.className = v === 'dispensed'
+                            ? 'px-3.5 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold transition'
+                            : 'px-3.5 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition';
+                    } else {
+                        btn.className = 'px-3.5 py-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold transition';
+                    }
+                }
+                renderKeysList();
+            };
+
+            window.dispenseSingleKeyById = async function (keyId) {
+                if (!state.currentUser) return;
+                const item = state.keys.find((k) => k.id === keyId);
+                if (!item || item.status !== 'available') {
+                    showToast('Key này đã được lấy ra trước đó, không thể cấp trùng!', 'warning');
+                    return;
+                }
+                const modeRadio = document.querySelector('input[name="dispense-mode"]:checked');
+                const mode = modeRadio ? modeRadio.value : 'move_history';
+
+                item.status = 'dispensed';
+                item.dispensedAt = Date.now();
+                item.dispensedBy = state.currentUser.username;
+                item.dispenseMode = mode;
+
+                state.lastDispensedKeys = [item.code];
+                await persistAllState();
+
+                const outBox = document.getElementById('dispensed-output-box');
+                const countSpan = document.getElementById('last-dispensed-count');
+                if (outBox) outBox.value = item.code;
+                if (countSpan) countSpan.textContent = '1';
+
+                copyToClipboard(item.code, `Key vừa lấy (${item.code})`);
+                refreshAllViews();
+            };
+
+            window.extendKey200Years = async function (keyId) {
+                const item = state.keys.find((k) => k.id === keyId);
+                if (!item) return;
+                item.expiresAt = Date.now() + TWO_HUNDRED_YEARS_MS;
+                await persistAllState();
+                refreshAllViews();
+                showToast(`Đã gia hạn Key "${item.code}" thêm 200 năm.`, 'success');
+            };
+
+            window.deleteKeyRecord = function (keyId, code) {
+                openConfirmDialog(
+                    'Xóa Key khỏi hệ thống',
+                    `Xóa vĩnh viễn mã Key "${code}" khỏi kho?`,
+                    async () => {
+                        state.keys = state.keys.filter((k) => k.id !== keyId);
+                        await persistAllState();
+                        refreshAllViews();
+                        showToast(`Đã xóa Key "${code}".`, 'success');
+                    }
+                );
+            };
+
+            window.copyKeyCode = function (code) {
+                copyToClipboard(code, `Key (${code})`);
+            };
+
+            function getFilteredKeys() {
+                const query = (document.getElementById('search-keys-input')?.value || '').trim().toLowerCase();
+
+                return state.keys.filter((k) => {
+                    if (state.scopeFilter === 'mine' && state.currentUser && k.ownerId !== state.currentUser.id) {
+                        return false;
+                    }
+                    if (state.keysSubView === 'available' && k.status !== 'available') return false;
+                    if (state.keysSubView === 'dispensed' && k.status !== 'dispensed') return false;
+
+                    if (query) {
+                        const hay = `${k.code} ${k.plan} ${k.note} ${k.ownerName} ${k.dispensedBy || ''}`.toLowerCase();
+                        return hay.includes(query);
+                    }
+                    return true;
+                });
+            }
+
+            window.renderKeysList = function () {
+                const tbody = document.getElementById('keys-table-body');
+                const empty = document.getElementById('keys-empty');
+                if (!tbody || !empty) return;
+
+                const list = getFilteredKeys();
+                if (!list.length) {
+                    tbody.innerHTML = '';
+                    empty.classList.remove('hidden');
+                    return;
+                }
+                empty.classList.add('hidden');
+
+                tbody.innerHTML = list
+                    .map((k) => {
+                        const { expired, daysLeft, yearsLeft } = calcRetention200Years(k.expiresAt);
+                        const canEdit = state.currentUser && (state.currentUser.role === 'admin' || state.currentUser.id === k.ownerId);
+
+                        let statusHtml = '<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Chưa lấy (Khả dụng)</span>';
+                        if (k.status === 'dispensed') {
+                            statusHtml = `
+                                <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">Đã lấy ra</span>
+                                <div class="text-[10px] text-slate-400 mt-1">Bởi: <strong>${escapeHtml(k.dispensedBy || 'N/A')}</strong> • ${formatDateTimeVN(k.dispensedAt)}</div>
+                            `;
+                        } else if (expired) {
+                            statusHtml = '<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">Hết hạn 200 năm</span>';
+                        }
+
+                        return `
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono font-bold text-white select-all">${escapeHtml(k.code)}</span>
+                                        <button type="button" onclick="copyKeyCode('${escapeJsArg(k.code)}')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-cyan-500/20 text-cyan-300 text-[11px] font-semibold transition">
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">Nạp bởi: ${escapeHtml(k.ownerName || 'Hệ thống')}</div>
+                                </td>
+                                <td class="py-3 px-3">
+                                    <div class="text-xs font-semibold text-slate-200">${escapeHtml(k.plan || 'Gói 200 Năm')}</div>
+                                    <div class="text-[11px] text-slate-400">${escapeHtml(k.note || '')}</div>
+                                </td>
+                                <td class="py-3 px-3">
+                                    <div class="font-mono text-xs font-bold ${expired ? 'text-rose-400' : 'text-cyan-300'}">~${yearsLeft} năm (${daysLeft.toLocaleString('vi-VN')}d)</div>
+                                    <div class="text-[10px] text-slate-500">Đến: ${formatDateVN(k.expiresAt)}</div>
+                                </td>
+                                <td class="py-3 px-3">${statusHtml}</td>
+                                <td class="py-3 px-4 text-right">
+                                    <div class="inline-flex flex-wrap justify-end gap-1.5">
+                                        ${k.status === 'available' ? `<button type="button" onclick="dispenseSingleKeyById('${k.id}')" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-500/40 transition">Lấy Key Này</button>` : ''}
+                                        <button type="button" onclick="extendKey200Years('${k.id}')" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 text-[11px] font-semibold border border-cyan-500/30 transition">
+                                            +200 Năm
+                                        </button>
+                                        ${canEdit ? `<button type="button" onclick="deleteKeyRecord('${k.id}', '${escapeJsArg(k.code)}')" class="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-[11px] font-semibold border border-rose-500/30 transition">Xóa</button>` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    })
+                    .join('');
+            };
+
+            window.exportFilteredKeysTxt = function () {
+                const list = getFilteredKeys();
+                if (!list.length) {
+                    showToast('Không có Key nào để xuất.', 'warning');
+                    return;
+                }
+                const lines = list.map((k) => `${k.code} | ${k.plan} | Hết hạn: ${formatDateVN(k.expiresAt)} | ${k.status === 'dispensed' ? 'DaLay' : 'KhaDung'}`);
+                triggerDownload(lines.join('\n'), `Vault200_Keys_${Date.now()}.txt`, 'text/plain;charset=utf-8');
+                showToast(`Đã xuất ${list.length} mã Key ra file .TXT.`, 'success');
+            };
+
+            // ==========================================
+            // 8. DUPLICATE-FREE TK/MK VAULT (200 YEARS)
+            // ==========================================
+            window.insertSampleAccounts = function () {
+                const rnd = Math.floor(100 + Math.random() * 899);
+                const ta = document.getElementById('accounts-batch-input');
+                const rows = [
+                    `account_vip_${rnd}@mail.com|PassManh@${rnd}`,
+                    `member_200_${rnd + 1}|SecureKey#${rnd + 1}`
+                ];
+                ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + rows.join('\n');
+            };
+
+            window.handleAddAccountsBatch = async function (event) {
+                event.preventDefault();
+                if (!state.currentUser) return;
+
+                const lines = document.getElementById('accounts-batch-input').value
+                    .split(/\r?\n/)
+                    .map((l) => l.trim())
+                    .filter(Boolean);
+
+                if (!lines.length) {
+                    showToast('Vui lòng nhập ít nhất 1 dòng taikhoan|matkhau.', 'warning');
+                    return;
+                }
+
+                const service = document.getElementById('accounts-service-input').value.trim() || 'Dịch vụ chung';
+                const existingAccSet = new Set(state.accounts.map((a) => normalizeUsername(a.username)));
+                const batchAccSet = new Set();
+
+                const accepted = [];
+                let dupCount = 0;
+                let malformedCount = 0;
+
+                for (const line of lines) {
+                    const sep = line.includes('|') ? '|' : (line.includes(':') ? ':' : null);
+                    if (!sep) {
+                        malformedCount++;
+                        continue;
+                    }
+                    const parts = line.split(sep);
+                    const accUser = (parts[0] || '').trim();
+                    const accPass = parts.slice(1).join(sep).trim();
+
+                    if (!accUser || !accPass) {
+                        malformedCount++;
+                        continue;
+                    }
+
+                    const normUser = normalizeUsername(accUser);
+                    if (existingAccSet.has(normUser) || batchAccSet.has(normUser)) {
+                        dupCount++;
+                    } else {
+                        batchAccSet.add(normUser);
+                        accepted.push({ username: accUser, password: accPass });
+                    }
+                }
+
+                const now = Date.now();
+                const expiresAt = now + TWO_HUNDRED_YEARS_MS;
+
+                for (const acc of accepted) {
+                    state.accounts.unshift({
+                        id: `acc_${now}_${Math.random().toString(36).slice(2, 8)}`,
+                        username: acc.username,
+                        password: acc.password,
+                        service,
+                        createdAt: now,
+                        expiresAt,
+                        ownerId: state.currentUser.id,
+                        ownerName: state.currentUser.username
+                    });
+                }
+
+                await persistAllState();
+
+                const summaryBox = document.getElementById('accounts-import-summary');
+                summaryBox.classList.remove('hidden');
+                summaryBox.innerHTML = `
+                    <p class="text-emerald-400 font-bold">✓ Đã lưu mới: ${accepted.length} tài khoản (Hạn 200 năm)</p>
+                    <p class="text-amber-400">⚠ Trùng tên tài khoản bị loại: ${dupCount} mục</p>
+                    ${malformedCount ? `<p class="text-rose-400">✕ Sai định dạng bị loại: ${malformedCount} dòng</p>` : ''}
+                `;
+
+                if (accepted.length > 0) {
+                    document.getElementById('accounts-batch-input').value = '';
+                    showToast(`Đã lưu ${accepted.length} TK/MK không trùng lặp (200 năm)!`, 'success');
+                } else {
+                    showToast('Không có tài khoản hợp lệ mới nào được thêm.', 'warning');
+                }
+
+                refreshAllViews();
+            };
+
+            window.toggleSingleAccountPassword = function (accId) {
+                if (state.revealedIds.has(accId)) {
+                    state.revealedIds.delete(accId);
+                } else {
+                    state.revealedIds.add(accId);
+                }
+                renderAccountsList();
+            };
+
+            window.toggleRevealAllPasswords = function () {
+                state.revealAllPasswords = !state.revealAllPasswords;
+                const lbl = document.getElementById('reveal-all-label');
+                if (lbl) lbl.textContent = state.revealAllPasswords ? 'Ẩn tất cả MK' : 'Hiện tất cả MK';
+                renderAccountsList();
+            };
+
+            window.extendAccount200Years = async function (accId) {
+                const acc = state.accounts.find((a) => a.id === accId);
+                if (!acc) return;
+                acc.expiresAt = Date.now() + TWO_HUNDRED_YEARS_MS;
+                await persistAllState();
+                refreshAllViews();
+                showToast(`Đã gia hạn tài khoản "${acc.username}" thêm 200 năm.`, 'success');
+            };
+
+            window.deleteAccountRecord = function (accId, username) {
+                openConfirmDialog(
+                    'Xóa TK / MK khỏi kho',
+                    `Xóa vĩnh viễn tài khoản "${username}" khỏi hệ thống?`,
+                    async () => {
+                        state.accounts = state.accounts.filter((a) => a.id !== accId);
+                        await persistAllState();
+                        refreshAllViews();
+                        showToast(`Đã xóa tài khoản "${username}".`, 'success');
+                    }
+                );
+            };
+
+            window.copyAccountLine = function (user, pass) {
+                copyToClipboard(`${user}|${pass}`, `TK|MK (${user})`);
+            };
+
+            function getFilteredAccounts() {
+                const query = (document.getElementById('search-accounts-input')?.value || '').trim().toLowerCase();
+                return state.accounts.filter((a) => {
+                    if (state.scopeFilter === 'mine' && state.currentUser && a.ownerId !== state.currentUser.id) {
+                        return false;
+                    }
+                    if (query) {
+                        const hay = `${a.username} ${a.service} ${a.ownerName}`.toLowerCase();
+                        return hay.includes(query);
+                    }
+                    return true;
+                });
+            }
+
+            window.renderAccountsList = function () {
+                const tbody = document.getElementById('accounts-table-body');
+                const empty = document.getElementById('accounts-empty');
+                if (!tbody || !empty) return;
+
+                const list = getFilteredAccounts();
+                if (!list.length) {
+                    tbody.innerHTML = '';
+                    empty.classList.remove('hidden');
+                    return;
+                }
+                empty.classList.add('hidden');
+
+                tbody.innerHTML = list
+                    .map((a) => {
+                        const { expired, daysLeft, yearsLeft } = calcRetention200Years(a.expiresAt);
+                        const visible = state.revealAllPasswords || state.revealedIds.has(a.id);
+                        const canEdit = state.currentUser && (state.currentUser.role === 'admin' || state.currentUser.id === a.ownerId);
+                        const masked = '•'.repeat(Math.min(12, Math.max(6, String(a.password || '').length)));
+
+                        return `
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono font-bold text-white">${escapeHtml(a.username)}</span>
+                                        <button type="button" onclick="copyAccountLine('${escapeJsArg(a.username)}', '${escapeJsArg(a.password)}')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-purple-500/20 text-purple-300 text-[11px] font-semibold transition">
+                                            Copy TK|MK
+                                        </button>
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">Lưu bởi: ${escapeHtml(a.ownerName || 'Hệ thống')}</div>
+                                </td>
+                                <td class="py-3 px-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono text-xs ${visible ? 'text-amber-200 bg-slate-900 px-2 py-0.5 rounded border border-slate-700' : 'text-slate-400'}">
+                                            ${visible ? escapeHtml(a.password) : masked}
+                                        </span>
+                                        <button type="button" onclick="toggleSingleAccountPassword('${a.id}')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium transition">
+                                            ${visible ? 'Ẩn' : 'Hiện'}
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-3">
+                                    <span class="px-2.5 py-1 rounded-lg bg-slate-800/90 text-slate-200 text-xs border border-slate-700">${escapeHtml(a.service || 'Chung')}</span>
+                                </td>
+                                <td class="py-3 px-3">
+                                    <div class="font-mono text-xs font-bold ${expired ? 'text-rose-400' : 'text-purple-300'}">~${yearsLeft} năm (${daysLeft.toLocaleString('vi-VN')}d)</div>
+                                    <div class="text-[10px] text-slate-500">${formatDateVN(a.expiresAt)}</div>
+                                </td>
+                                <td class="py-3 px-4 text-right">
+                                    <div class="inline-flex flex-wrap justify-end gap-1.5">
+                                        <button type="button" onclick="extendAccount200Years('${a.id}')" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-[11px] font-semibold border border-emerald-500/30 transition">
+                                            +200 Năm
+                                        </button>
+                                        ${canEdit ? `<button type="button" onclick="deleteAccountRecord('${a.id}', '${escapeJsArg(a.username)}')" class="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-[11px] font-semibold border border-rose-500/30 transition">Xóa</button>` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    })
+                    .join('');
+            };
+
+            window.exportAccountsFile = function (ext) {
+                const list = getFilteredAccounts();
+                if (!list.length) {
+                    showToast('Không có tài khoản nào để xuất.', 'warning');
+                    return;
+                }
+                if (ext === 'csv') {
+                    const csv = '\uFEFFTaiKhoan,MatKhau,DichVu,NgayHetHan200Nam\n' +
+                        list.map((a) => `"${a.username}","${a.password}","${a.service}","${formatDateVN(a.expiresAt)}"`).join('\n');
+                    triggerDownload(csv, `Vault200_Accounts_${Date.now()}.csv`, 'text/csv;charset=utf-8');
+                } else {
+                    const txt = list.map((a) => `${a.username}|${a.password}`).join('\n');
+                    triggerDownload(txt, `Vault200_Accounts_${Date.now()}.txt`, 'text/plain;charset=utf-8');
+                }
+                showToast(`Đã xuất ${list.length} tài khoản ra file .${ext.toUpperCase()}.`, 'success');
+            };
+
+            function triggerDownload(content, filename, mime) {
+                const blob = new Blob([content], { type: mime });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+
+            // ==========================================
+            // 9. RENDERING STAFF/MEMBERS & ADMIN VAULT
+            // ==========================================
+            function renderMembersDirectory() {
+                const tbody = document.getElementById('members-table-body');
+                const badgeCount = document.getElementById('members-count-badge');
+                if (!tbody) return;
+
+                const directory = [...state.staffAccounts, ...state.memberAccounts];
+                if (badgeCount) badgeCount.textContent = directory.length;
+
+                if (!directory.length) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs sm:text-sm">Chưa có tài khoản nhân viên hoặc thành viên nào.</td></tr>`;
+                    return;
+                }
+
+                const isAdmin = state.currentUser && state.currentUser.role === 'admin';
+
+                tbody.innerHTML = directory
+                    .map((u) => {
+                        const { expired, daysLeft, yearsLeft } = calcRetention200Years(u.expiresAt);
+                        const isSelf = state.currentUser && state.currentUser.id === u.id;
+                        const kCount = state.keys.filter((k) => k.ownerId === u.id).length;
+                        const aCount = state.accounts.filter((a) => a.ownerId === u.id).length;
+                        const rolePill = u.role === 'staff'
+                            ? '<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30">Nhân viên</span>'
+                            : '<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">Thành viên</span>';
+
+                        return `
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-white">${escapeHtml(u.username)} ${isSelf ? '<span class="text-[11px] text-cyan-400">(Bạn)</span>' : ''}</div>
+                                    ${isAdmin ? `<div class="text-[11px] font-mono text-slate-400">MK: ${escapeHtml(u.password)}</div>` : ''}
+                                </td>
+                                <td class="py-3 px-3">${rolePill}</td>
+                                <td class="py-3 px-3 text-xs text-slate-300">
+                                    <span class="font-mono text-cyan-400 font-bold">${kCount}</span> Key • <span class="font-mono text-purple-400 font-bold">${aCount}</span> TK/MK
+                                </td>
+                                <td class="py-3 px-3">
+                                    <div class="font-mono text-xs font-bold ${expired ? 'text-rose-400' : 'text-emerald-400'}">${expired ? 'Hết hạn' : `~${yearsLeft} năm (${daysLeft.toLocaleString('vi-VN')}d)`}</div>
+                                    <div class="text-[10px] text-slate-500">${formatDateVN(u.expiresAt)}</div>
+                                </td>
+                                <td class="py-3 px-4 text-right">
+                                    <div class="inline-flex flex-wrap justify-end gap-1.5">
+                                        ${isSelf && u.role === 'staff' ? `<button type="button" onclick="openChangeCredModal()" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-xs font-bold border border-cyan-500/40 transition">Đổi TK/MK</button>` : ''}
+                                        ${isAdmin && !isSelf ? `<button type="button" onclick="deleteSystemAccount('${u.id}', '${escapeJsArg(u.username)}', '${u.role}')" class="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-semibold border border-rose-500/30 transition">Xóa</button>` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    })
+                    .join('');
+            }
+
+            function renderAdminAccountsVault() {
+                const tbody = document.getElementById('admin-accounts-table-body');
+                if (!tbody) return;
+
+                const isAdmin = state.currentUser && state.currentUser.role === 'admin';
+                if (!isAdmin) {
+                    tbody.innerHTML = '';
+                    return;
+                }
+
+                tbody.innerHTML = state.adminAccounts
+                    .map((adm) => {
+                        const { expired, daysLeft, yearsLeft } = calcRetention200Years(adm.expiresAt);
+                        const isSelf = state.currentUser && state.currentUser.id === adm.id;
+                        return `
+                            <tr class="hover:bg-amber-500/5 transition">
+                                <td class="py-3 px-4 font-mono font-bold text-amber-200">
+                                    ${escapeHtml(adm.username)} ${isSelf ? '<span class="text-[10px] font-sans text-cyan-400">(Đang đăng nhập)</span>' : ''}
+                                </td>
+                                <td class="py-3 px-3 font-mono text-xs text-slate-200">${escapeHtml(adm.password)}</td>
+                                <td class="py-3 px-3">
+                                    <span class="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold">admin_accounts</span>
+                                </td>
+                                <td class="py-3 px-3 font-mono text-xs ${expired ? 'text-rose-400' : 'text-emerald-400'}">
+                                    ${expired ? 'Hết hạn' : `~${yearsLeft} năm (${daysLeft.toLocaleString('vi-VN')}d - ${formatDateVN(adm.expiresAt)})`}
+                                </td>
+                                <td class="py-3 px-4 text-right">
+                                    <div class="inline-flex gap-1.5">
+                                        ${isSelf ? `<button type="button" onclick="openChangeCredModal()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-bold transition">Đổi TK/MK Admin</button>` : ''}
+                                        ${!isSelf ? `<button type="button" onclick="deleteSystemAccount('${adm.id}', '${escapeJsArg(adm.username)}', 'admin')" class="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition">Xóa</button>` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    })
+                    .join('');
+            }
+
+            function refreshHeaderAndMetrics() {
+                const user = state.currentUser;
+                if (user) {
+                    document.getElementById('nav-username').textContent = user.username;
+                    const badge = document.getElementById('nav-role-badge');
+                    const headerCredBtn = document.getElementById('btn-header-change-cred');
+                    const adminTabBtn = document.getElementById('tab-admin-accounts');
+                    const staffCreatorPanel = document.getElementById('admin-create-staff-panel');
+
+                    const isAdmin = user.role === 'admin';
+                    const isStaff = user.role === 'staff';
+
+                    if (isAdmin) {
+                        badge.textContent = 'ADMIN';
+                        badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30';
+                        adminTabBtn?.classList.remove('hidden');
+                        staffCreatorPanel?.classList.remove('hidden');
+                    } else if (isStaff) {
+                        badge.textContent = 'STAFF';
+                        badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30';
+                        adminTabBtn?.classList.add('hidden');
+                        staffCreatorPanel?.classList.add('hidden');
+                        if (state.activeTab === 'admin-accounts') switchWorkspaceTab('keys');
+                    } else {
+                        badge.textContent = 'USER';
+                        badge.className = 'px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+                        adminTabBtn?.classList.add('hidden');
+                        staffCreatorPanel?.classList.add('hidden');
+                        if (state.activeTab === 'admin-accounts') switchWorkspaceTab('keys');
+                    }
+
+                    if (headerCredBtn) {
+                        headerCredBtn.classList.toggle('hidden', !(isAdmin || isStaff));
+                    }
+
+                    const { yearsLeft } = calcRetention200Years(user.expiresAt);
+                    document.getElementById('nav-expiry-text').textContent = `Hạn 200 năm: Còn ~${yearsLeft} năm`;
+                }
+
+                const keysScoped = state.scopeFilter === 'mine' && user
+                    ? state.keys.filter((k) => k.ownerId === user.id)
+                    : state.keys;
+                const accsScoped = state.scopeFilter === 'mine' && user
+                    ? state.accounts.filter((a) => a.ownerId === user.id)
+                    : state.accounts;
+
+                const availCount = keysScoped.filter((k) => k.status === 'available' && !calcRetention200Years(k.expiresAt).expired).length;
+                const dispensedCount = keysScoped.filter((k) => k.status === 'dispensed').length;
+
+                document.getElementById('metric-avail-keys').textContent = availCount;
+                document.getElementById('metric-dispensed-keys').textContent = dispensedCount;
+                document.getElementById('metric-total-keys-sub').textContent = `Tổng ${keysScoped.length} key từng nạp`;
+                document.getElementById('metric-total-accounts').textContent = accsScoped.length;
+                document.getElementById('metric-total-users').textContent = getAllSystemUsers().length;
+
+                // Update Dispense box badge and subtab counts
+                const dispenseBadge = document.getElementById('dispense-avail-badge');
+                if (dispenseBadge) dispenseBadge.textContent = availCount;
+
+                const cAvail = document.getElementById('count-tab-avail');
+                const cDisp = document.getElementById('count-tab-dispensed');
+                const cAll = document.getElementById('count-tab-all');
+                if (cAvail) cAvail.textContent = availCount;
+                if (cDisp) cDisp.textContent = dispensedCount;
+                if (cAll) cAll.textContent = keysScoped.length;
+            }
+
+            function refreshAllViews() {
+                refreshHeaderAndMetrics();
+                renderKeysList();
+                renderAccountsList();
+                renderMembersDirectory();
+                renderAdminAccountsVault();
+                updateStorageIndicators();
+            }
+
+            window.switchWorkspaceTab = function (tabName) {
+                if (tabName === 'admin-accounts' && (!state.currentUser || state.currentUser.role !== 'admin')) {
+                    showToast('Khu vực Kho Tài Khoản Admin chỉ dành cho Admin.', 'warning');
+                    return;
+                }
+                state.activeTab = tabName;
+                const tabs = ['keys', 'accounts', 'members', 'admin-accounts'];
+                for (const t of tabs) {
+                    const sec = document.getElementById(`workspace-${t}`);
+                    const btn = document.getElementById(`tab-${t}`);
+                    if (sec) sec.classList.toggle('hidden', t !== tabName);
+                    if (btn) {
+                        if (t === tabName) {
+                            btn.className = 'px-4 py-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs sm:text-sm font-bold transition';
+                        } else {
+                            btn.className = t === 'admin-accounts'
+                                ? 'px-4 py-2.5 rounded-xl bg-slate-900/90 text-amber-300/80 hover:text-amber-200 border border-amber-500/30 text-xs sm:text-sm font-semibold transition'
+                                : 'px-4 py-2.5 rounded-xl bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800 text-xs sm:text-sm font-semibold transition';
+                        }
+                    }
+                }
+            };
+
+            window.changeDataScope = function (scope) {
+                state.scopeFilter = scope;
+                const allBtn = document.getElementById('filter-scope-all');
+                const mineBtn = document.getElementById('filter-scope-mine');
+                if (scope === 'mine') {
+                    mineBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600/30 text-cyan-200 border border-cyan-500/30 transition';
+                    allBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+                } else {
+                    allBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-white transition';
+                    mineBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+                }
+                refreshHeaderAndMetrics();
+                renderKeysList();
+                renderAccountsList();
+            };
+
+            // ==========================================
+            // 10. BOOTSTRAP (CLOUDFLARE RESILIENT)
+            // ==========================================
+            async function bootstrapVault200() {
+                try {
+                    const savedV200 = localStorage.getItem(STORAGE_KEY_V200);
+                    const savedLegacy = localStorage.getItem(LEGACY_KEY_V365);
+                    if (savedV200) {
+                        applySnapshot(JSON.parse(savedV200));
+                    } else if (savedLegacy) {
+                        applySnapshot(JSON.parse(savedLegacy));
+                    }
+                } catch (_) {}
+
+                const idbSnap = await readSnapshotFromIDB();
+                if (idbSnap) {
+                    const localCount = state.keys.length + state.accounts.length + state.staffAccounts.length + state.memberAccounts.length;
+                    const idbCount = (idbSnap.keys?.length || 0) + (idbSnap.accounts?.length || 0) +
+                        (idbSnap.staffAccounts?.length || 0) + (idbSnap.memberAccounts?.length || 0);
+                    if (idbCount > localCount) {
+                        applySnapshot(idbSnap);
+                    }
+                }
+
+                ensureDefaultAccountsSeeded();
+                await persistAllState();
+                evaluateRegisterStrength();
+                evaluateStaffPasswordStrength();
+                updateStorageIndicators();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', bootstrapVault200);
+            } else {
+                bootstrapVault200();
+            }
+        })();
+    </script>
+</body>
+</html>
